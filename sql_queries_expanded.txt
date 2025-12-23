@@ -1,0 +1,67 @@
+
+-- 1. Total kilometers driven across all sessions
+SELECT SUM(mileage) AS total_kilometers_driven
+FROM DrivingSession;
+
+-- 2. Average distance covered per session
+SELECT AVG(mileage) AS avg_distance_covered
+FROM DrivingSession;
+
+-- 3. Total distance during night time drives (assuming night is from 20:00 to 06:00)
+SELECT SUM(mileage) AS total_distance_night_drives
+FROM DrivingSession
+WHERE startTime >= '20:00:00' OR startTime < '06:00:00';
+
+-- 4. Relationship between road types and traffic conditions
+SELECT rt.roadTypeDescription, tc.trafficDescription, COUNT(*) AS frequency
+FROM DrivingSession ds
+JOIN RoadType rt ON ds.roadTypeID = rt.roadTypeID
+JOIN TrafficCondition tc ON ds.trafficID = tc.trafficID
+GROUP BY rt.roadTypeDescription, tc.trafficDescription
+ORDER BY rt.roadTypeDescription, tc.trafficDescription;
+
+-- 5. Peak traffic hours (top 3 hours with most high traffic sessions)
+SELECT HOUR(ds.startTime) AS hour_of_day, COUNT(*) AS peak_traffic_count
+FROM DrivingSession ds
+JOIN TrafficCondition tc ON ds.trafficID = tc.trafficID
+WHERE tc.trafficDescription IN ('Rush Hour', 'Heavy Traffic')
+GROUP BY hour_of_day
+ORDER BY peak_traffic_count DESC
+LIMIT 3;
+
+-- 6. Most common maneuver used in driving sessions
+SELECT m.maneuverAttribute, COUNT(*) AS times_used
+FROM DrivingSession ds
+JOIN Maneuvers m ON ds.maneuverID = m.maneuverID
+GROUP BY m.maneuverAttribute
+ORDER BY times_used DESC
+LIMIT 1;
+
+-- 7. Average number of driving sessions per driver
+SELECT AVG(session_count) AS avg_sessions_per_driver
+FROM (
+    SELECT driverID, COUNT(*) AS session_count
+    FROM DrivingSession
+    GROUP BY driverID
+) AS driver_sessions;
+
+-- 8. Total sessions by visibility condition
+SELECT vr.visibilityDescription, COUNT(*) AS total_sessions
+FROM DrivingSession ds
+JOIN VisibilityRange vr ON ds.visibilityID = vr.visibilityID
+GROUP BY vr.visibilityDescription;
+
+-- 9. Sessions where road type is difficult and maneuver is hard
+SELECT ds.sessionID, rt.roadTypeDescription, rt.difficulty AS road_difficulty,
+       m.maneuverAttribute, m.difficulty AS maneuver_difficulty
+FROM DrivingSession ds
+JOIN RoadType rt ON ds.roadTypeID = rt.roadTypeID
+JOIN Maneuvers m ON ds.maneuverID = m.maneuverID
+WHERE rt.difficulty = 'Hard' AND m.difficulty = 'Hard';
+
+-- 10. Longest session duration in minutes (assumes time format and calculation logic)
+SELECT sessionID,
+       TIMESTAMPDIFF(MINUTE, startTime, endTime) AS duration_minutes
+FROM DrivingSession
+ORDER BY duration_minutes DESC
+LIMIT 1;

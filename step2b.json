@@ -1,0 +1,27 @@
+{
+    "weather": [
+        {"value": "1", "text": "Sunny"},
+        {"value": "2", "text": "Rainy"},
+        {"value": "3", "text": "Snowy"},
+        {"value": "4", "text": "Windy"},
+        {"value": "5", "text": "Foggy"}
+    ],
+    "trafficConditions": [
+        {"value": "1", "text": "Rush Hour"},
+        {"value": "2", "text": "Rural Roads"},
+        {"value": "3", "text": "Highways"},
+        {"value": "4", "text": "Urban Areas"}
+    ],
+    "roadType": [
+        {"value": "1", "text": "Dry and Clear"},
+        {"value": "2", "text": "Gravel or Loose Surface"},
+        {"value": "3", "text": "Construction Zones"},
+        {"value": "4", "text": "Debris"}
+    ],
+    "visibilityRange": [
+        {"value": "1", "text": "Dust or Smoke"},
+        {"value": "2", "text": "Heavy Rain"},
+        {"value": "3", "text": "Snowfall"},
+        {"value": "4", "text": "Sun Glare"}
+    ]
+}

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://kit.fontawesome.com/a49a2f08e3.js" crossorigin="anonymous"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driving Experience Assistant</title>
+    <style>
+        /* Background video styling */
+        video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 100%;
+            min-height: 100%;
+            object-fit: cover;
+            filter: saturate(50%) brightness(70%);
+            z-index: 0; /* Behind all content */
+        }
+
+        /* Alternate image for mobile */
+        .mobile-background {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: 0;
+        }
+
+        /* Dark overlay for better text visibility */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(37, 54, 40, 0.7); /* Semi-transparent overlay */
+            z-index: 1; /* Above the video */
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #253628;
+            color: #EBEBE9;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        header {
+            background-color: #49654C;
+            color: #EBEBE9;
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+            position: relative;
+            animation: bounceIn 1s ease; /* Bounce-in animation for header */
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 2;
+            position: relative;
+            animation: fadeInUp 1.5s ease; /* Fade-in animation for main content */
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-gap: 15px;
+            width: 100%;
+            max-width: 500px;
+            background-color: #8AA989;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="date"],
+        input[type="time"],
+        input[type="number"],
+        select {
+            width: 100%; /* Ensure all input types fill the available width */
+            box-sizing: border-box; /* Include padding and border in element's total width */
+            padding: 12px; /* Maintain consistent padding */
+            border: 1px solid #C0CEB2;
+            border-radius: 6px;
+            background-color: #EBEBE9;
+            color: #253628;
+            transition: border-color 0.3s, transform 0.2s;
+        }
+
+        input:hover, select:hover {
+            border-color: #49654C;
+            transform: scale(1.02);
+        }
+
+        input:focus, select:focus {
+            border-color: #A3E6DA;
+            outline: none;
+        }
+
+        button {
+            background-color: #49654C;
+            color: #EBEBE9;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        button:hover {
+            background-color: #A3E6DA; /* Change background on hover */
+            transform: scale(1.05); /* Slight scale on hover */
+        }
+
+        button:active {
+            background-color: #C0CEB2; /* Change when active */
+        }
+
+        footer {
+            background-color: #49654C;
+            color: #EBEBE9;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+            width: 100%;
+            z-index: 2;
+            box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #summary {
+            margin-top: 20px;
+            animation: fadeInUp 1.5s ease; /* Fade-in animation for summary */
+        }
+
+        a {
+            color: #A3E6DA;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            color: #49654C; /* Change link color on hover */
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            video {
+                display: none; /* Hide video on mobile */
+            }
+
+            .mobile-background {
+                display: block;
+                background-image: url('car-mobile.jpg'); /* Provide a mobile-friendly image */
+            }
+
+            header h1 {
+                font-size: 1.4rem;
+            }
+
+            button {
+                padding: 10px; /* Adjust button padding on mobile */
+            }
+
+            input, select {
+                font-size: 1em; /* Adjust input size on mobile */
+            }
+        }
+
+        @media (min-width: 601px) {
+            video {
+                display: block; /* Show video on larger screens */
+            }
+
+            .mobile-background {
+                display: none; /* Hide mobile background on larger screens */
+            }
+
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            button {
+                padding: 12px; /* Reset button padding */
+            }
+
+            input, select {
+                font-size: 1.2em; /* Reset input size */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Video -->
+    <video autoplay muted loop>
+        <source src="car.mp4" type="video/mp4">
+    </video>
+
+    <!-- Mobile background image -->
+    <div class="mobile-background"></div>
+
+    <header>
+        <h1><i class="fa-solid fa-car"></i> Driving Experience Assistant</h1>
+    </header>
+
+    <main>
+        <form id="driving-form">
+            <label for="date"><i class="fa-solid fa-calendar-days"></i> Date:</label>
+            <input type="date" id="date" name="date" required>
+
+            <label for="start-time"><i class="fa-solid fa-hourglass-start"></i> Start Time:</label>
+            <input type="time" id="start-time" name="start-time" required>
+
+            <label for="end-time"><i class="fa-solid fa-hourglass-end"></i> End Time:</label>
+            <input type="time" id="end-time" name="end-time" required>
+
+            <label for="mileage"><i class="fa-solid fa-road"></i> Mileage (in km):</label>
+            <input type="number" id="mileage" name="mileage" required>
+
+            <label for="weather"><i class="fa-solid fa-cloud"></i> Weather Condition:</label>
+            <select id="weather" name="weather" required>
+                <option value="">-- Choose --</option>
+            </select>
+
+            <label for="traffic-conditions">Traffic Conditions:</label>
+            <select id="traffic-conditions" name="traffic-conditions" required>
+                <option value="">-- Choose --</option>
+            </select>
+
+            <label for="road-type">Road Type:</label>
+            <select id="road-type" name="road-type" required>
+                <option value="">-- Choose --</option>
+            </select>
+
+            <label for="visibility-range"><i class="fa-solid fa-eye"></i> Visibility Range:</label>
+            <select id="visibility-range" name="visibility-range" required>
+                <option value="">-- Choose --</option>
+            </select>
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <div id="summary"><br><br><br><br>
+            <h2><i class="fa-solid fa-list"></i> Summary</h2>
+            <p id="total-distance">Total Distance Traveled: 0 km</p>
+            <a href="summary.html"><i class="fa-solid fa-forward"></i> View Detailed Summary</a>
+        </div>
+    </main>
+
+    <footer>
+        <p><i class="fa-solid fa-copyright"></i> 2024. Driving Experience Assistant.</p>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Populate select fields dynamically from JSON file
+            fetch('step2b.json')
+                .then(response => response.json())
+                .then(data => {
+                    function populateSelect(elementId, options) {
+                        const select = document.getElementById(elementId);
+                        options.forEach(option => {
+                            const opt = document.createElement("option");
+                            opt.value = option.value;
+                            opt.textContent = option.text;
+                            select.appendChild(opt);
+                        });
+                    }
+
+                    // Populate weather, traffic conditions, road type, and visibility range
+                    populateSelect("weather", data.weather);
+                    populateSelect("traffic-conditions", data.trafficConditions);
+                    populateSelect("road-type", data.roadType);
+                    populateSelect("visibility-range", data.visibilityRange);
+                })
+                .catch(error => console.error("Error loading JSON data:", error));
+
+            // Handle form submission and save to localStorage
+            const form = document.getElementById("driving-form");
+            const totalDistanceEl = document.getElementById("total-distance");
+
+            function updateTotalDistance() {
+                const drivingExperiences = JSON.parse(localStorage.getItem("drivingExperiences")) || [];
+                const totalDistance = drivingExperiences.reduce((sum, exp) => sum + (parseInt(exp.km) || 0), 0);
+                totalDistanceEl.textContent = `Total Distance Traveled: ${totalDistance} km`;
+            }
+
+            updateTotalDistance(); // Initial total distance calculation
+
+            form.addEventListener("submit", function (event) {
+                event.preventDefault(); // Prevent page reload
+
+                // Get form values
+                const date = document.getElementById("date").value;
+                const startingTime = document.getElementById("start-time").value;
+                const endingTime = document.getElementById("end-time").value;
+                const km = document.getElementById("mileage").value;
+                const idWeatherCondition = document.getElementById("weather").value;
+                const idTrafficConditions = document.getElementById("traffic-conditions").value;
+                const idRoadType = document.getElementById("road-type").value;
+                const idVisibilityRange = document.getElementById("visibility-range").value;
+
+                // Retrieve existing data from localStorage
+                let drivingExperiences = JSON.parse(localStorage.getItem("drivingExperiences")) || [];
+
+                // Generate new id
+                const nextId = drivingExperiences.length > 0
+                    ? Math.max(...drivingExperiences.map(exp => parseInt(exp.idDrivingExperience))) + 1
+                    : 1;
+
+                // Create new experience object
+                const newExperience = {
+                    idDrivingExperience: nextId.toString(),
+                    date: date,
+                    "starting-time": startingTime,
+                    "ending-time": endingTime,
+                    km: parseInt(km),
+                    idWeatherCondition: idWeatherCondition,
+                    idTrafficConditions: idTrafficConditions,
+                    idRoadType: idRoadType,
+                    idVisibilityRange: idVisibilityRange
+                };
+
+                // Add new experience to array and save to localStorage
+                drivingExperiences.push(newExperience);
+                localStorage.setItem("drivingExperiences", JSON.stringify(drivingExperiences));
+
+                // Update the total distance
+                updateTotalDistance();
+
+                // Reset form and notify user
+                alert("Driving experience recorded successfully!");
+                form.reset(); // Reset form fields
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,8 +1,56 @@
 <?php
 require_once 'config.php';
 
-// Check if form was submitted
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle driver deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+    $driverID = $_POST['driver_id'] ?? '';
+
+    if (empty($driverID)) {
+        $_SESSION['error'] = 'Invalid driver ID!';
+    } else {
+        $conn = getDatabaseConnection();
+
+        // Start transaction
+        $conn->begin_transaction();
+
+        try {
+            // First, delete all driving sessions for this driver
+            $deleteSessionsQuery = "DELETE FROM DrivingSession WHERE driverID = ?";
+            $stmt = $conn->prepare($deleteSessionsQuery);
+            $stmt->bind_param("i", $driverID);
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Error deleting sessions: " . $stmt->error);
+            }
+            $stmt->close();
+
+            // Then, delete the driver
+            $deleteDriverQuery = "DELETE FROM Driver WHERE driverID = ?";
+            $stmt = $conn->prepare($deleteDriverQuery);
+            $stmt->bind_param("i", $driverID);
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Error deleting driver: " . $stmt->error);
+            }
+            $stmt->close();
+
+            // Commit transaction
+            $conn->commit();
+            $_SESSION['success'] = 'Driver and all associated sessions deleted successfully!';
+        } catch (Exception $e) {
+            // Rollback on error
+            $conn->rollback();
+            $_SESSION['error'] = 'Error deleting driver: ' . $e->getMessage();
+        }
+
+        $conn->close();
+        header('Location: manage_drivers.php');
+        exit;
+    }
+}
+
+// Handle form submission for new driver
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST['action'] !== 'delete')) {
     $driverName = $_POST['driver_name'] ?? '';
     $birthday = $_POST['birthday'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -51,9 +99,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all drivers
+// Fetch all drivers with session count
 $conn = getDatabaseConnection();
-$driverQuery = "SELECT driverID, driverName, birthday FROM Driver ORDER BY driverID";
+$driverQuery = "
+    SELECT 
+        d.driverID, 
+        d.driverName, 
+        d.birthday,
+        COUNT(ds.sessionID) as session_count,
+        COALESCE(SUM(ds.mileage), 0) as total_distance
+    FROM Driver d
+    LEFT JOIN DrivingSession ds ON d.driverID = ds.driverID
+    GROUP BY d.driverID, d.driverName, d.birthday
+    ORDER BY d.driverID
+";
 $driverResult = $conn->query($driverQuery);
 $conn->close();
 
@@ -135,6 +194,29 @@ unset($_SESSION['error']);
         header h1 {
             font-size: 1.8rem;
             margin: 0;
+        }
+
+        .header-nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .header-nav a {
+            color: #EBEBE9;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 6px;
+            background-color: rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+        }
+
+        .header-nav a:hover {
+            background-color: #A3E6DA;
+            color: #253628;
         }
 
         @keyframes bounceIn {
@@ -328,6 +410,27 @@ unset($_SESSION['error']);
             padding: 20px;
         }
 
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .delete-btn {
+            background-color: #FF6B6B;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .delete-btn:hover {
+            background-color: #FF5252;
+            transform: scale(1.05);
+        }
+
         a {
             color: #A3E6DA;
             text-decoration: none;
@@ -353,9 +456,90 @@ unset($_SESSION['error']);
             margin-top: 30px;
         }
 
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background-color: #8AA989;
+            margin: 10% auto;
+            padding: 25px;
+            border: 2px solid #49654C;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content h2 {
+            color: #253628;
+            margin-top: 0;
+        }
+
+        .modal-content p {
+            color: #253628;
+            font-size: 1rem;
+            margin: 15px 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .confirm-btn {
+            background-color: #FF6B6B;
+            color: white;
+        }
+
+        .confirm-btn:hover {
+            background-color: #FF5252;
+            transform: scale(1.05);
+        }
+
+        .cancel-btn {
+            background-color: #49654C;
+            color: #EBEBE9;
+        }
+
+        .cancel-btn:hover {
+            background-color: #A3E6DA;
+            color: #253628;
+            transform: scale(1.05);
+        }
+
         @media (max-width: 600px) {
             header h1 {
                 font-size: 1.4rem;
+            }
+
+            .header-nav {
+                gap: 10px;
+            }
+
+            .header-nav a {
+                font-size: 0.9rem;
+                padding: 6px 12px;
             }
 
             .form-section, .drivers-section {
@@ -371,6 +555,15 @@ unset($_SESSION['error']);
                 font-size: 1rem;
                 padding: 10px;
             }
+
+            .delete-btn {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -383,6 +576,11 @@ unset($_SESSION['error']);
 
     <header>
         <h1><i class="fa-solid fa-users"></i> Manage Drivers</h1>
+        <div class="header-nav">
+            <a href="index.php"><i class="fa-solid fa-home"></i> Home</a>
+            <a href="manage_drivers.php"><i class="fa-solid fa-users"></i> Manage Drivers</a>
+            <a href="summary.php"><i class="fa-solid fa-chart-bar"></i> Summary</a>
+        </div>
     </header>
 
     <main>
@@ -427,6 +625,9 @@ unset($_SESSION['error']);
                                 <th>ID</th>
                                 <th>Name</th>
                                 <th>Birthday</th>
+                                <th>Sessions</th>
+                                <th>Total Distance (km)</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -435,6 +636,15 @@ unset($_SESSION['error']);
                                     <td><?php echo htmlspecialchars($row['driverID']); ?></td>
                                     <td><?php echo htmlspecialchars($row['driverName']); ?></td>
                                     <td><?php echo htmlspecialchars($row['birthday']); ?></td>
+                                    <td><?php echo $row['session_count']; ?></td>
+                                    <td><?php echo number_format($row['total_distance'], 1); ?></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="delete-btn" onclick="openDeleteModal(<?php echo $row['driverID']; ?>, '<?php echo htmlspecialchars(addslashes($row['driverName'])); ?>')">
+                                                <i class="fa-solid fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             <?php endwhile; ?>
                         </tbody>
@@ -450,8 +660,48 @@ unset($_SESSION['error']);
         </div>
     </main>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fa-solid fa-exclamation-triangle"></i> Confirm Deletion</h2>
+            <p>Are you sure you want to delete driver <strong id="driverNameDisplay"></strong>?</p>
+            <p style="color: #FF6B6B; font-size: 0.9rem;">⚠️ This will also delete all driving sessions associated with this driver.</p>
+            <div class="modal-buttons">
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="driver_id" id="driverIDInput" value="">
+                    <button type="submit" class="confirm-btn">
+                        <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                </form>
+                <button type="button" class="cancel-btn" onclick="closeDeleteModal()">
+                    <i class="fa-solid fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <p><i class="fa-solid fa-copyright"></i> 2025. Driving Experience Assistant.</p>
     </footer>
+
+    <script>
+        function openDeleteModal(driverID, driverName) {
+            document.getElementById('deleteModal').style.display = 'block';
+            document.getElementById('driverNameDisplay').textContent = driverName;
+            document.getElementById('driverIDInput').value = driverID;
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('deleteModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

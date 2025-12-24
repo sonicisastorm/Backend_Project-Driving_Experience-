@@ -4,6 +4,10 @@ require_once 'config.php';
 // Fetch dropdown options from database
 $conn = getDatabaseConnection();
 
+// Get drivers
+$driverQuery = "SELECT driverID, driverName FROM Driver ORDER BY driverID";
+$driverResult = $conn->query($driverQuery);
+
 // Get weather conditions
 $weatherQuery = "SELECT weatherID, weatherDescription FROM WeatherCondition ORDER BY weatherID";
 $weatherResult = $conn->query($weatherQuery);
@@ -314,8 +318,15 @@ $conn->close();
             <label for="mileage"><i class="fa-solid fa-road"></i> Mileage (in km):</label>
             <input type="number" id="mileage" name="mileage" step="0.1" min="0" required inputmode="decimal">
 
-            <label for="driver"><i class="fa-solid fa-user"></i> Driver ID:</label>
-            <input type="number" id="driver" name="driver_id" value="1" required min="1">
+            <label for="driver"><i class="fa-solid fa-user"></i> Driver:</label>
+            <select id="driver" name="driver_id" required>
+                <option value="">-- Choose --</option>
+                <?php while ($row = $driverResult->fetch_assoc()): ?>
+                    <option value="<?php echo $row['driverID']; ?>">
+                        <?php echo htmlspecialchars($row['driverName']); ?>
+                    </option>
+                <?php endwhile; ?>
+            </select>
 
             <label for="weather"><i class="fa-solid fa-cloud"></i> Weather Condition:</label>
             <select id="weather" name="weather_id" required>

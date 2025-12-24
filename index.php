@@ -114,6 +114,29 @@ $conn->close();
             margin: 0;
         }
 
+        .header-nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .header-nav a {
+            color: #EBEBE9;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 6px;
+            background-color: rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+        }
+
+        .header-nav a:hover {
+            background-color: #A3E6DA;
+            color: #253628;
+        }
+
         @keyframes bounceIn {
             0% {
                 transform: scale(0.8);
@@ -267,6 +290,15 @@ $conn->close();
                 font-size: 1.4rem;
             }
 
+            .header-nav {
+                gap: 10px;
+            }
+
+            .header-nav a {
+                font-size: 0.9rem;
+                padding: 6px 12px;
+            }
+
             button {
                 padding: 10px;
             }
@@ -296,6 +328,11 @@ $conn->close();
 
     <header>
         <h1><i class="fa-solid fa-car"></i> Driving Experience Assistant</h1>
+        <div class="header-nav">
+            <a href="index.php"><i class="fa-solid fa-home"></i> Home</a>
+            <a href="manage_drivers.php"><i class="fa-solid fa-users"></i> Manage Drivers</a>
+            <a href="summary.php"><i class="fa-solid fa-chart-bar"></i> Summary</a>
+        </div>
     </header>
 
     <main>

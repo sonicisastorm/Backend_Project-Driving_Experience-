@@ -11,12 +11,15 @@ $query = "
         ds.startTime,
         ds.endTime,
         ds.mileage,
+        d.driverName,
+        d.driverID,
         w.weatherDescription,
         t.trafficDescription,
         r.roadTypeDescription,
         v.visibilityDescription,
         m.maneuverAttribute
     FROM DrivingSession ds
+    JOIN Driver d ON ds.driverID = d.driverID
     JOIN WeatherCondition w ON ds.weatherID = w.weatherID
     JOIN TrafficCondition t ON ds.trafficID = t.trafficID
     JOIN RoadType r ON ds.roadTypeID = r.roadTypeID
@@ -27,19 +30,27 @@ $query = "
 
 $result = $conn->query($query);
 
-// Calculate total distance
+// Get all drivers
+$driverQuery = "SELECT driverID, driverName FROM Driver ORDER BY driverID";
+$driverResult = $conn->query($driverQuery);
+$drivers = [];
+while ($row = $driverResult->fetch_assoc()) {
+    $drivers[$row['driverID']] = $row['driverName'];
+}
+
+// Calculate overall total distance
 $totalQuery = "SELECT SUM(mileage) as total FROM DrivingSession";
 $totalResult = $conn->query($totalQuery);
 $totalRow = $totalResult->fetch_assoc();
 $totalDistance = $totalRow['total'] ?? 0;
 
-// Get statistics for charts
+// Get overall statistics for charts
 $weatherStats = [];
 $trafficStats = [];
 $roadStats = [];
 $visibilityStats = [];
 
-// Weather statistics
+// Overall Weather statistics
 $weatherQuery = "
     SELECT w.weatherDescription, COUNT(*) as count
     FROM DrivingSession ds
@@ -52,7 +63,7 @@ while ($row = $weatherResult->fetch_assoc()) {
     $weatherStats[$row['weatherDescription']] = $row['count'];
 }
 
-// Traffic statistics
+// Overall Traffic statistics
 $trafficQuery = "
     SELECT t.trafficDescription, COUNT(*) as count
     FROM DrivingSession ds
@@ -65,7 +76,7 @@ while ($row = $trafficResult->fetch_assoc()) {
     $trafficStats[$row['trafficDescription']] = $row['count'];
 }
 
-// Road type statistics
+// Overall Road type statistics
 $roadQuery = "
     SELECT r.roadTypeDescription, COUNT(*) as count
     FROM DrivingSession ds
@@ -78,7 +89,7 @@ while ($row = $roadResult->fetch_assoc()) {
     $roadStats[$row['roadTypeDescription']] = $row['count'];
 }
 
-// Visibility statistics
+// Overall Visibility statistics
 $visibilityQuery = "
     SELECT v.visibilityDescription, COUNT(*) as count
     FROM DrivingSession ds
@@ -91,16 +102,32 @@ while ($row = $visibilityResult->fetch_assoc()) {
     $visibilityStats[$row['visibilityDescription']] = $row['count'];
 }
 
-// Get data for line chart (distance over time)
-$lineChartQuery = "
-    SELECT sessionDate, mileage
-    FROM DrivingSession
-    ORDER BY sessionDate ASC
-";
-$lineChartResult = $conn->query($lineChartQuery);
-$lineChartData = [];
-while ($row = $lineChartResult->fetch_assoc()) {
-    $lineChartData[] = $row;
+// Get driver-specific statistics
+$driverStats = [];
+foreach ($drivers as $driverID => $driverName) {
+    $driverQuery = "
+        SELECT 
+            COUNT(ds.sessionID) as total_sessions,
+            SUM(ds.mileage) as total_distance,
+            AVG(ds.mileage) as avg_distance,
+            MIN(ds.sessionDate) as first_session,
+            MAX(ds.sessionDate) as last_session
+        FROM DrivingSession ds
+        WHERE ds.driverID = ?
+    ";
+    $stmt = $conn->prepare($driverQuery);
+    $stmt->bind_param("i", $driverID);
+    $stmt->execute();
+    $driverRow = $stmt->get_result()->fetch_assoc();
+    $driverStats[$driverID] = [
+        'name' => $driverName,
+        'sessions' => $driverRow['total_sessions'] ?? 0,
+        'distance' => $driverRow['total_distance'] ?? 0,
+        'avg_distance' => $driverRow['avg_distance'] ?? 0,
+        'first_session' => $driverRow['first_session'],
+        'last_session' => $driverRow['last_session']
+    ];
+    $stmt->close();
 }
 
 $conn->close();
@@ -149,6 +176,29 @@ $conn->close();
             gap: 10px;
         }
 
+        .header-nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .header-nav a {
+            color: #EBEBE9;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 6px;
+            background-color: rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+        }
+
+        .header-nav a:hover {
+            background-color: #A3E6DA;
+            color: #253628;
+        }
+
         @keyframes bounceIn {
             0% {
                 transform: scale(0.8);
@@ -193,16 +243,21 @@ $conn->close();
             padding: 25px;
             border-radius: 12px;
             width: 100%;
-            max-width: 1000px;
+            max-width: 1100px;
             margin-bottom: 20px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
         }
 
+        .summary-box h2 {
+            color: #253628;
+            margin-top: 0;
+        }
+
         .total-distance {
             font-size: 1.2rem;
             margin-bottom: 15px;
-            color: #FFF;
+            color: #253628;
             font-weight: bold;
         }
 
@@ -295,11 +350,63 @@ $conn->close();
             text-align: center;
             padding: 20px;
             font-size: 1.2rem;
+            color: #253628;
+        }
+
+        .driver-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .driver-card {
+            background-color: #C0CEB2;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #49654C;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .driver-card h3 {
+            color: #49654C;
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+
+        .driver-card p {
+            color: #253628;
+            margin: 8px 0;
+            text-align: left;
+        }
+
+        .driver-card strong {
+            color: #49654C;
+        }
+
+        .stats-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #49654C;
+        }
+
+        .stats-section h2 {
+            color: #253628;
+            margin-top: 0;
         }
 
         @media (max-width: 600px) {
             header h1 {
                 font-size: 1.4rem;
+            }
+
+            .header-nav {
+                gap: 10px;
+            }
+
+            .header-nav a {
+                font-size: 0.9rem;
+                padding: 6px 12px;
             }
 
             table th, table td {
@@ -315,18 +422,27 @@ $conn->close();
             canvas {
                 max-width: 90%;
             }
+
+            .driver-stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <h1><i class="fa-solid fa-car"></i> Driving Experience Summary</h1>
+        <div class="header-nav">
+            <a href="index.php"><i class="fa-solid fa-home"></i> Home</a>
+            <a href="manage_drivers.php"><i class="fa-solid fa-users"></i> Manage Drivers</a>
+            <a href="summary.php"><i class="fa-solid fa-chart-bar"></i> Summary</a>
+        </div>
     </header>
     
     <main>
         <div class="summary-box">
             <div class="total-distance">
-                Total Distance Traveled: <span><?php echo number_format($totalDistance, 1); ?> km</span>
+                <i class="fa-solid fa-globe"></i> Total Distance Traveled (All Drivers): <span><?php echo number_format($totalDistance, 1); ?> km</span>
             </div>
             
             <h2><i class="fa-solid fa-circle-info"></i> Detailed Submissions</h2>
@@ -335,6 +451,7 @@ $conn->close();
                 <table>
                     <thead>
                         <tr>
+                            <th>Driver</th>
                             <th>Date</th>
                             <th>Start Time</th>
                             <th>End Time</th>
@@ -347,8 +464,10 @@ $conn->close();
                         </tr>
                     </thead>
                     <tbody>
+                        <?php $result->data_seek(0); ?>
                         <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
+                                <td><?php echo htmlspecialchars($row['driverName']); ?></td>
                                 <td><?php echo htmlspecialchars($row['sessionDate']); ?></td>
                                 <td><?php echo htmlspecialchars($row['startTime']); ?></td>
                                 <td><?php echo htmlspecialchars($row['endTime']); ?></td>
@@ -363,18 +482,36 @@ $conn->close();
                     </tbody>
                 </table>
 
-                <h2><i class="fa-solid fa-chart-simple"></i> Statistics</h2>
-                <div class="toggle-buttons">
-                    <button id="barChartButton" class="active">Bar Charts</button>
-                    <button id="pieChartButton">Pie Charts</button>
-                    <button id="lineChartButton">Line Graph</button>
+                <div class="stats-section">
+                    <h2><i class="fa-solid fa-chart-simple"></i> Overall Statistics</h2>
+                    <div class="toggle-buttons">
+                        <button id="barChartButton" class="active">Bar Charts</button>
+                        <button id="pieChartButton">Pie Charts</button>
+                    </div>
+                    
+                    <canvas id="weatherChart"></canvas>
+                    <canvas id="trafficChart"></canvas>
+                    <canvas id="roadChart"></canvas>
+                    <canvas id="visibilityChart"></canvas>
                 </div>
-                
-                <canvas id="weatherChart"></canvas>
-                <canvas id="trafficChart"></canvas>
-                <canvas id="roadChart"></canvas>
-                <canvas id="visibilityChart"></canvas>
-                <canvas id="lineChart" style="display: none;"></canvas>
+
+                <div class="stats-section">
+                    <h2><i class="fa-solid fa-user-group"></i> Driver Statistics</h2>
+                    <div class="driver-stats-grid">
+                        <?php foreach ($driverStats as $driverID => $stats): ?>
+                            <?php if ($stats['sessions'] > 0): ?>
+                                <div class="driver-card">
+                                    <h3><?php echo htmlspecialchars($stats['name']); ?></h3>
+                                    <p><strong>Total Sessions:</strong> <?php echo $stats['sessions']; ?></p>
+                                    <p><strong>Total Distance:</strong> <?php echo number_format($stats['distance'], 1); ?> km</p>
+                                    <p><strong>Average Distance:</strong> <?php echo number_format($stats['avg_distance'], 1); ?> km</p>
+                                    <p><strong>First Session:</strong> <?php echo htmlspecialchars($stats['first_session']); ?></p>
+                                    <p><strong>Last Session:</strong> <?php echo htmlspecialchars($stats['last_session']); ?></p>
+                                </div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             <?php else: ?>
                 <div class="no-data">
                     <p>No driving experiences recorded yet.</p>
@@ -397,7 +534,6 @@ $conn->close();
         const trafficStats = <?php echo json_encode($trafficStats); ?>;
         const roadStats = <?php echo json_encode($roadStats); ?>;
         const visibilityStats = <?php echo json_encode($visibilityStats); ?>;
-        const lineChartData = <?php echo json_encode($lineChartData); ?>;
 
         Chart.register(ChartDataLabels);
         let chartInstances = [];
@@ -412,11 +548,6 @@ $conn->close();
         function renderCharts(chartType) {
             chartInstances.forEach(chart => chart.destroy());
             chartInstances = [];
-
-            document.getElementById("lineChart").style.display = "none";
-            ["weatherChart", "trafficChart", "roadChart", "visibilityChart"].forEach(id => {
-                document.getElementById(id).style.display = "block";
-            });
 
             // Update button states
             document.querySelectorAll('.toggle-buttons button').forEach(btn => {
@@ -467,59 +598,11 @@ $conn->close();
             });
         }
 
-        function renderLineChart() {
-            chartInstances.forEach(chart => chart.destroy());
-            chartInstances = [];
-
-            document.getElementById("lineChart").style.display = "block";
-            ["weatherChart", "trafficChart", "roadChart", "visibilityChart"].forEach(id => {
-                document.getElementById(id).style.display = "none";
-            });
-
-            // Update button states
-            document.querySelectorAll('.toggle-buttons button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById('lineChartButton').classList.add('active');
-
-            const labels = lineChartData.map(d => d.sessionDate);
-            const data = lineChartData.map(d => parseFloat(d.mileage));
-
-            const lineChart = new Chart(document.getElementById("lineChart"), {
-                type: "line",
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: "Distance Traveled Over Time (km)",
-                        data: data,
-                        borderColor: "#32CD32",
-                        backgroundColor: "rgba(50, 205, 50, 0.2)",
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: true, position: 'top' },
-                        title: { display: true, text: "Distance Traveled Over Time" },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true },
-                        x: { title: { display: true, text: "Date" } }
-                    }
-                }
-            });
-
-            chartInstances.push(lineChart);
-        }
-
         <?php if ($result->num_rows > 0): ?>
         renderCharts("bar");
 
         document.getElementById("barChartButton").addEventListener("click", () => renderCharts("bar"));
         document.getElementById("pieChartButton").addEventListener("click", () => renderCharts("pie"));
-        document.getElementById("lineChartButton").addEventListener("click", renderLineChart);
         <?php endif; ?>
     </script>
 </body>

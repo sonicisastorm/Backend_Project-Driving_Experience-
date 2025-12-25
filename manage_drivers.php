@@ -3,50 +3,71 @@ require_once 'config.php';
 
 // Handle driver deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
-    $driverID = $_POST['driver_id'] ?? '';
+    $driverToken = $_POST['driver_id'] ?? '';
 
-    if (empty($driverID)) {
+    if (empty($driverToken)) {
         $_SESSION['error'] = 'Invalid driver ID!';
     } else {
-        $conn = getDatabaseConnection();
+        // Decode the token to get the actual driver ID
+        $driverID = decodeToken($driverToken, 'driver');
+        
+        if ($driverID === false) {
+            $_SESSION['error'] = 'Invalid driver token!';
+        } else {
+            $conn = getDatabaseConnection();
 
-        // Start transaction
-        $conn->begin_transaction();
+            // Start transaction
+            $conn->begin_transaction();
 
-        try {
-            // First, delete all driving sessions for this driver
-            $deleteSessionsQuery = "DELETE FROM DrivingSession WHERE driverID = ?";
-            $stmt = $conn->prepare($deleteSessionsQuery);
-            $stmt->bind_param("i", $driverID);
-            
-            if (!$stmt->execute()) {
-                throw new Exception("Error deleting sessions: " . $stmt->error);
+            try {
+                // Verify driver exists
+                $verifyQuery = "SELECT COUNT(*) as count FROM Driver WHERE driverID = ?";
+                $stmt = $conn->prepare($verifyQuery);
+                $stmt->bind_param("i", $driverID);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result->fetch_assoc();
+                
+                if ($row['count'] == 0) {
+                    throw new Exception("Driver not found!");
+                }
+                $stmt->close();
+
+                // First, delete all driving sessions for this driver
+                $deleteSessionsQuery = "DELETE FROM DrivingSession WHERE driverID = ?";
+                $stmt = $conn->prepare($deleteSessionsQuery);
+                $stmt->bind_param("i", $driverID);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("Error deleting sessions: " . $stmt->error);
+                }
+                $stmt->close();
+
+                // Then, delete the driver
+                $deleteDriverQuery = "DELETE FROM Driver WHERE driverID = ?";
+                $stmt = $conn->prepare($deleteDriverQuery);
+                $stmt->bind_param("i", $driverID);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("Error deleting driver: " . $stmt->error);
+                }
+                $stmt->close();
+
+                // Commit transaction
+                $conn->commit();
+                $_SESSION['success'] = 'Driver and all associated sessions deleted successfully!';
+            } catch (Exception $e) {
+                // Rollback on error
+                $conn->rollback();
+                $_SESSION['error'] = 'Error deleting driver: ' . $e->getMessage();
             }
-            $stmt->close();
 
-            // Then, delete the driver
-            $deleteDriverQuery = "DELETE FROM Driver WHERE driverID = ?";
-            $stmt = $conn->prepare($deleteDriverQuery);
-            $stmt->bind_param("i", $driverID);
-            
-            if (!$stmt->execute()) {
-                throw new Exception("Error deleting driver: " . $stmt->error);
-            }
-            $stmt->close();
-
-            // Commit transaction
-            $conn->commit();
-            $_SESSION['success'] = 'Driver and all associated sessions deleted successfully!';
-        } catch (Exception $e) {
-            // Rollback on error
-            $conn->rollback();
-            $_SESSION['error'] = 'Error deleting driver: ' . $e->getMessage();
+            $conn->close();
         }
-
-        $conn->close();
-        header('Location: manage_drivers.php');
-        exit;
     }
+    
+    header('Location: manage_drivers.php');
+    exit;
 }
 
 // Handle form submission for new driver
@@ -130,6 +151,7 @@ unset($_SESSION['error']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Drivers</title>
     <style>
+        /* [Previous CSS styles remain exactly the same] */
         /* Background video styling */
         video {
             position: absolute;
@@ -622,7 +644,7 @@ unset($_SESSION['error']);
                     <table>
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>#</th>
                                 <th>Name</th>
                                 <th>Birthday</th>
                                 <th>Sessions</th>
@@ -631,16 +653,20 @@ unset($_SESSION['error']);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $driverResult->fetch_assoc()): ?>
+                            <?php 
+                            $rowNumber = 1; // Sequential counter for display only
+                            while ($row = $driverResult->fetch_assoc()): 
+                            ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['driverID']); ?></td>
+                                    <td><?php echo $rowNumber++; ?></td>
                                     <td><?php echo htmlspecialchars($row['driverName']); ?></td>
                                     <td><?php echo htmlspecialchars($row['birthday']); ?></td>
                                     <td><?php echo $row['session_count']; ?></td>
                                     <td><?php echo number_format($row['total_distance'], 1); ?></td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="delete-btn" onclick="openDeleteModal(<?php echo $row['driverID']; ?>, '<?php echo htmlspecialchars(addslashes($row['driverName'])); ?>')">
+                                            <button class="delete-btn" 
+                                                onclick="openDeleteModal('<?php echo htmlspecialchars(generateToken($row['driverID'], 'driver')); ?>', '<?php echo htmlspecialchars(addslashes($row['driverName'])); ?>')">
                                                 <i class="fa-solid fa-trash"></i> Delete
                                             </button>
                                         </div>
@@ -686,10 +712,10 @@ unset($_SESSION['error']);
     </footer>
 
     <script>
-        function openDeleteModal(driverID, driverName) {
+        function openDeleteModal(driverToken, driverName) {
             document.getElementById('deleteModal').style.display = 'block';
             document.getElementById('driverNameDisplay').textContent = driverName;
-            document.getElementById('driverIDInput').value = driverID;
+            document.getElementById('driverIDInput').value = driverToken;
         }
 
         function closeDeleteModal() {

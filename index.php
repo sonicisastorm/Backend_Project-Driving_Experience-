@@ -359,7 +359,8 @@ $conn->close();
             <select id="driver" name="driver_id" required>
                 <option value="">-- Choose --</option>
                 <?php while ($row = $driverResult->fetch_assoc()): ?>
-                    <option value="<?php echo $row['driverID']; ?>">
+                    <!-- Using tokenized IDs instead of raw database IDs for security -->
+                    <option value="<?php echo htmlspecialchars(generateToken($row['driverID'], 'driver')); ?>">
                         <?php echo htmlspecialchars($row['driverName']); ?>
                     </option>
                 <?php endwhile; ?>
@@ -369,7 +370,7 @@ $conn->close();
             <select id="weather" name="weather_id" required>
                 <option value="">-- Choose --</option>
                 <?php while ($row = $weatherResult->fetch_assoc()): ?>
-                    <option value="<?php echo $row['weatherID']; ?>">
+                    <option value="<?php echo htmlspecialchars(generateToken($row['weatherID'], 'weather')); ?>">
                         <?php echo htmlspecialchars($row['weatherDescription']); ?>
                     </option>
                 <?php endwhile; ?>
@@ -379,7 +380,7 @@ $conn->close();
             <select id="traffic-conditions" name="traffic_id" required>
                 <option value="">-- Choose --</option>
                 <?php while ($row = $trafficResult->fetch_assoc()): ?>
-                    <option value="<?php echo $row['trafficID']; ?>">
+                    <option value="<?php echo htmlspecialchars(generateToken($row['trafficID'], 'traffic')); ?>">
                         <?php echo htmlspecialchars($row['trafficDescription']); ?>
                     </option>
                 <?php endwhile; ?>
@@ -389,7 +390,7 @@ $conn->close();
             <select id="road-type" name="road_type_id" required>
                 <option value="">-- Choose --</option>
                 <?php while ($row = $roadResult->fetch_assoc()): ?>
-                    <option value="<?php echo $row['roadTypeID']; ?>">
+                    <option value="<?php echo htmlspecialchars(generateToken($row['roadTypeID'], 'roadtype')); ?>">
                         <?php echo htmlspecialchars($row['roadTypeDescription']); ?>
                     </option>
                 <?php endwhile; ?>
@@ -399,7 +400,7 @@ $conn->close();
             <select id="visibility-range" name="visibility_id" required>
                 <option value="">-- Choose --</option>
                 <?php while ($row = $visibilityResult->fetch_assoc()): ?>
-                    <option value="<?php echo $row['visibilityID']; ?>">
+                    <option value="<?php echo htmlspecialchars(generateToken($row['visibilityID'], 'visibility')); ?>">
                         <?php echo htmlspecialchars($row['visibilityDescription']); ?>
                     </option>
                 <?php endwhile; ?>
@@ -409,7 +410,7 @@ $conn->close();
             <select id="maneuver" name="maneuver_id" required>
                 <option value="">-- Choose --</option>
                 <?php while ($row = $maneuverResult->fetch_assoc()): ?>
-                    <option value="<?php echo $row['maneuverID']; ?>">
+                    <option value="<?php echo htmlspecialchars(generateToken($row['maneuverID'], 'maneuver')); ?>">
                         <?php echo htmlspecialchars($row['maneuverAttribute']); ?>
                     </option>
                 <?php endwhile; ?>

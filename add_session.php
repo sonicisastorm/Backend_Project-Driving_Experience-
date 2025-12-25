@@ -12,18 +12,34 @@ $date = $_POST['date'] ?? '';
 $startTime = $_POST['start_time'] ?? '';
 $endTime = $_POST['end_time'] ?? '';
 $mileage = $_POST['mileage'] ?? 0;
-$driverID = $_POST['driver_id'] ?? 1;
-$weatherID = $_POST['weather_id'] ?? '';
-$trafficID = $_POST['traffic_id'] ?? '';
-$roadTypeID = $_POST['road_type_id'] ?? '';
-$visibilityID = $_POST['visibility_id'] ?? '';
-$maneuverID = $_POST['maneuver_id'] ?? '';
 
-// Validate required fields
-if (empty($date) || empty($startTime) || empty($endTime) || empty($mileage) || 
-    empty($weatherID) || empty($trafficID) || empty($roadTypeID) || 
-    empty($visibilityID) || empty($maneuverID)) {
+// Get tokenized IDs and decode them
+$driverToken = $_POST['driver_id'] ?? '';
+$weatherToken = $_POST['weather_id'] ?? '';
+$trafficToken = $_POST['traffic_id'] ?? '';
+$roadTypeToken = $_POST['road_type_id'] ?? '';
+$visibilityToken = $_POST['visibility_id'] ?? '';
+$maneuverToken = $_POST['maneuver_id'] ?? '';
+
+// Decode tokens to get actual database IDs
+$driverID = decodeToken($driverToken, 'driver');
+$weatherID = decodeToken($weatherToken, 'weather');
+$trafficID = decodeToken($trafficToken, 'traffic');
+$roadTypeID = decodeToken($roadTypeToken, 'roadtype');
+$visibilityID = decodeToken($visibilityToken, 'visibility');
+$maneuverID = decodeToken($maneuverToken, 'maneuver');
+
+// Validate required fields and token decoding
+if (empty($date) || empty($startTime) || empty($endTime) || empty($mileage)) {
     $_SESSION['error'] = 'All fields are required!';
+    header('Location: index.php');
+    exit;
+}
+
+// Validate that tokens were decoded successfully
+if ($driverID === false || $weatherID === false || $trafficID === false || 
+    $roadTypeID === false || $visibilityID === false || $maneuverID === false) {
+    $_SESSION['error'] = 'Invalid form data detected. Please try again.';
     header('Location: index.php');
     exit;
 }
@@ -37,6 +53,44 @@ if (strtotime($endTime) <= strtotime($startTime)) {
 
 // Get database connection
 $conn = getDatabaseConnection();
+
+// Verify that the decoded IDs actually exist in the database
+// This prevents injection of fake IDs
+$verifyQueries = [
+    'driver' => "SELECT COUNT(*) as count FROM Driver WHERE driverID = ?",
+    'weather' => "SELECT COUNT(*) as count FROM WeatherCondition WHERE weatherID = ?",
+    'traffic' => "SELECT COUNT(*) as count FROM TrafficCondition WHERE trafficID = ?",
+    'roadtype' => "SELECT COUNT(*) as count FROM RoadType WHERE roadTypeID = ?",
+    'visibility' => "SELECT COUNT(*) as count FROM VisibilityRange WHERE visibilityID = ?",
+    'maneuver' => "SELECT COUNT(*) as count FROM Maneuvers WHERE maneuverID = ?"
+];
+
+$idsToVerify = [
+    'driver' => $driverID,
+    'weather' => $weatherID,
+    'traffic' => $trafficID,
+    'roadtype' => $roadTypeID,
+    'visibility' => $visibilityID,
+    'maneuver' => $maneuverID
+];
+
+// Verify each ID exists
+foreach ($verifyQueries as $type => $query) {
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $idsToVerify[$type]);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    
+    if ($row['count'] == 0) {
+        $_SESSION['error'] = 'Invalid ' . $type . ' selected!';
+        $stmt->close();
+        $conn->close();
+        header('Location: index.php');
+        exit;
+    }
+    $stmt->close();
+}
 
 // Get the next session ID
 $idQuery = "SELECT MAX(sessionID) as maxID FROM DrivingSession";
@@ -58,7 +112,7 @@ if (!$stmt) {
     exit;
 }
 
-// Bind parameters
+// Bind parameters (now using verified decoded IDs)
 $stmt->bind_param(
     "isssdiiiiii",
     $nextID,

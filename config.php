@@ -7,7 +7,7 @@
 define('DB_HOST', 'mysql-youraccount.alwaysdata.net');
 define('DB_NAME', 'youraccount_driving');
 define('DB_USER', 'youraccount_student');  
-define('DB_PASS', 'your_secure_password_here');
+define('DB_PASS', 'your_password_here');
 
 // Create database connection using mysqli
 function getDatabaseConnection() {
@@ -31,4 +31,7 @@ if (session_status() == PHP_SESSION_NONE) {
 
 // Set timezone
 date_default_timezone_set('Europe/Paris');
+
+// Include security helpers for data anonymization
+require_once __DIR__ . '/security_helpers.php';
 ?>

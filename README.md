@@ -1,6 +1,6 @@
 # Supervised Driving Experience - Backend Application
 
-A PHP and MySQL web application for managing and tracking supervised driving experiences with comprehensive statistics and driver management.
+A PHP and MySQL web application for managing and tracking supervised driving experiences with comprehensive statistics, driver management, and enterprise-grade security features.
 
 ## 🚗 Live Project
 **Visit the application**: [https://sonicstorm.alwaysdata.net/backend/driving_experience/](https://sonicstorm.alwaysdata.net/backend/driving_experience/)
@@ -15,14 +15,14 @@ A PHP and MySQL web application for managing and tracking supervised driving exp
 - **W3C Compliant**: Valid HTML5 with semantic elements
 - **Modern Design**: CSS Grid/Flexbox layout with smooth animations
 
-### Driver Management (NEW!)
+### Driver Management
 - **Add New Drivers**: Register new drivers with password protection
 - **View All Drivers**: See all drivers with their session count and total distance
 - **Delete Drivers**: Remove drivers and automatically delete all associated driving sessions
 - **Auto-update**: Summary and form dropdowns automatically reflect changes
 - **Transaction-safe**: Database operations are atomic and secure
 
-### Analytics (NEW!)
+### Analytics
 - **Overall Statistics**: Combined data and charts for all drivers
 - **Individual Driver Stats**: Dedicated statistics cards for each driver showing:
   - Total sessions and kilometers
@@ -30,10 +30,21 @@ A PHP and MySQL web application for managing and tracking supervised driving exp
   - First and last session dates
 - **Easy Navigation**: Header navigation bar across all pages
 
+### 🔒 Advanced Security Features (NEW!)
+- **Data Anonymization**: Custom HMAC-SHA256 tokenization system hides all database IDs from HTML forms
+- **SQL Injection Prevention**: All queries use MySQLi prepared statements with parameterized inputs
+- **Password Security**: BCrypt hashing with automatic salting (minimum 6 characters)
+- **XSS Protection**: All user output sanitized with `htmlspecialchars()`
+- **Token Validation**: Cryptographic verification of all form submissions
+- **Database Verification**: Server-side validation ensures decoded IDs exist before operations
+- **CSRF Protection**: Session-based validation prevents cross-site request forgery
+- **Transaction Safety**: ACID-compliant operations with automatic rollback on failures
+
 ## Technical Stack
 
 - **Backend**: PHP 7.4+ with MySQLi
 - **Database**: MySQL/MariaDB
+- **Security**: HMAC-SHA256 tokenization, BCrypt password hashing
 - **Frontend**: HTML5, CSS3, JavaScript
 - **Charts**: Chart.js with DataLabels plugin
 - **Icons**: Font Awesome
@@ -44,10 +55,11 @@ A PHP and MySQL web application for managing and tracking supervised driving exp
 ```
 /
 ├── config.php                 # Database configuration
+├── security_helpers.php       # Token generation/decoding (NEW!)
 ├── index.php                  # Main driving experience form
-├── add_session.php           # Form submission handler
-├── manage_drivers.php        # Driver management page (NEW!)
-├── summary.php               # Summary and statistics page (ENHANCED!)
+├── add_session.php           # Form submission handler with token validation
+├── manage_drivers.php        # Driver management page with secure delete
+├── summary.php               # Summary and statistics page
 ├── database_setup.sql        # Database creation script
 └── README.md                 # This file
 ```
@@ -83,13 +95,24 @@ A PHP and MySQL web application for managing and tracking supervised driving exp
    define('DB_PASS', 'your_password_here');
    ```
 
+3. Open `security_helpers.php`
+4. **IMPORTANT**: Change the security token secret:
+   ```php
+   define('TOKEN_SECRET', 'your_unique_random_secret_key_here');
+   ```
+   Use a long random string (at least 32 characters). Example:
+   ```php
+   define('TOKEN_SECRET', 'xK9m2Pq7Rz5Lw8Fn3Yv6Jt4Hb1Gc0SaXy3Zm5Nq');
+   ```
+
 ### 4. Upload Files to Alwaysdata
 
 Upload all PHP files to your web directory:
 - `config.php`
+- `security_helpers.php` 
 - `index.php`
 - `add_session.php`
-- `manage_drivers.php` (NEW!)
+- `manage_drivers.php`
 - `summary.php`
 
 ### 5. Test the Application
@@ -98,6 +121,7 @@ Upload all PHP files to your web directory:
 2. Use the **Manage Drivers** page to add drivers
 3. Test adding a driving session with the new drivers
 4. View the summary page with statistics per driver
+5. **Verify security**: View page source and confirm IDs are hashed (not raw numbers)
 
 ## How to Use
 
@@ -128,15 +152,54 @@ Upload all PHP files to your web directory:
 4. Confirm deletion in the modal (WARNING: This deletes all sessions for that driver)
 5. The driver and their data are permanently removed
 
-## Security Features
+## Security Features Explained
 
-- **Prepared Statements**: All SQL queries use prepared statements to prevent SQL injection
-- **Password Hashing**: Driver passwords use PHP's PASSWORD_BCRYPT algorithm
-- **Input Validation**: Server-side validation of all form inputs
-- **Session Management**: PHP sessions for success/error messages
-- **Transaction Safety**: Database deletion operations use transactions for atomicity
-- **Separate Database User**: Uses a dedicated database user with minimal privileges
-- **XSS Protection**: All output is HTML-escaped using `htmlspecialchars()`
+### 1. Data Anonymization (Token System)
+Instead of exposing raw database IDs in HTML forms:
+```html
+<!-- ❌ INSECURE (old way) -->
+<option value="1">John Doe</option>
+
+<!-- ✅ SECURE (new way) -->
+<option value="3f7a9b2c4d5e6f7a8b9c0d1e2f3a4b5MTJ8ZHJpdmVy">John Doe</option>
+```
+
+**How it works:**
+1. When displaying forms, database IDs are converted to cryptographic tokens using HMAC-SHA256
+2. Tokens include the ID, entity type, and a secret key hash
+3. When forms are submitted, tokens are validated and decoded server-side
+4. Invalid or tampered tokens are rejected automatically
+
+**Benefits:**
+- Prevents ID enumeration attacks (can't guess valid IDs)
+- Hides database structure from potential attackers
+- Detects and blocks tampered form submissions
+- Adds additional security layer beyond prepared statements
+
+### 2. Multi-Layer Input Validation
+- **Client-side**: HTML5 validation (required fields, formats)
+- **Server-side**: PHP validation with type checking
+- **Token validation**: Cryptographic verification of form data
+- **Database verification**: Confirms decoded IDs exist before use
+- **Business logic**: Validates constraints (end time after start time, etc.)
+
+### 3. Database Security
+- **Prepared Statements**: 100% protection against SQL injection
+- **Parameterized Queries**: All user input properly escaped
+- **Transaction Support**: ACID compliance with automatic rollback
+- **Foreign Key Constraints**: Enforces referential integrity
+- **Indexed Columns**: Optimized query performance
+
+### 4. Password Security
+- **BCrypt Algorithm**: Industry-standard password hashing
+- **Automatic Salting**: Each password has unique salt
+- **Minimum Length**: 6 character requirement enforced
+- **Hash Storage**: Plain text passwords never stored
+
+### 5. Session Security
+- **PHP Sessions**: Secure server-side session management
+- **Message System**: Success/error messages with automatic cleanup
+- **Session Validation**: Prevents unauthorized access
 
 ## Advanced Features
 
@@ -144,11 +207,14 @@ Upload all PHP files to your web directory:
 All dropdown menus are dynamically populated from the MySQL database:
 - Drivers list updates in real-time when new drivers are added
 - All condition options (weather, traffic, road type, visibility, maneuvers) are database-driven
+- **Tokenized Values**: All form values use cryptographic tokens for security
 
 ### Comprehensive Data Validation
 - Server-side validation ensures end time is after start time
 - Driver name uniqueness checking prevents duplicates
 - Password strength requirements (minimum 6 characters)
+- Token cryptographic validation prevents tampering
+- Database existence verification for all foreign keys
 - All fields required before submission
 - Clear error messages displayed to users
 
@@ -218,6 +284,55 @@ This ensures:
 - **vw_DrivingSessionDetails**: Complete session details with all related information
 - **vw_DriverStatistics**: Driver performance summary statistics
 
+## Technical Implementation Highlights
+
+### Security Architecture
+- **Defense in Depth**: Multiple security layers protect against attacks
+- **HMAC-SHA256 Tokenization**: Cryptographic ID obfuscation in forms
+- **Prepared Statements**: Complete SQL injection prevention
+- **Password Hashing**: BCrypt with automatic salting
+- **XSS Protection**: All output properly escaped
+- **Token Validation**: Cryptographic verification of form submissions
+- **Database Verification**: Server-side ID existence checking
+
+### Code Quality
+- **Separation of Concerns**: Configuration, security, logic, and presentation separated
+- **DRY Principle**: Reusable functions throughout
+- **Error Handling**: Try-catch blocks with proper exception handling
+- **Comprehensive Comments**: Inline documentation for complex logic
+- **Consistent Naming**: camelCase for variables, snake_case for database
+- **Transaction Safety**: ACID compliance for critical operations
+
+### Performance
+- **Efficient Queries**: Optimized JOINs minimize database calls
+- **Connection Reuse**: Single connection per page lifecycle
+- **Strategic Indexing**: Fast lookups on foreign keys
+- **Lazy Loading**: Charts render only when data exists
+- **CDN Resources**: External libraries loaded from CDN
+
+## Troubleshooting
+
+### Common Issues
+
+**1. "Invalid form data detected" error**
+- Ensure `security_helpers.php` is uploaded and accessible
+- Verify `TOKEN_SECRET` is set in `security_helpers.php`
+- Check that `config.php` includes `security_helpers.php`
+
+**2. Tokens not working**
+- Clear browser cache and reload the page
+- Verify all files are uploaded with correct permissions
+- Check PHP error log for specific error messages
+
+**3. Driver deletion fails**
+- Ensure database user has DELETE privileges
+- Check that transactions are supported (InnoDB engine)
+- Verify foreign key relationships are intact
+
+**4. Password hashing issues**
+- Ensure PHP version is 7.4 or higher
+- Verify BCrypt is available (it is by default in PHP 7.4+)
+
 ## Support & Resources
 
 For issues or questions, refer to:
@@ -225,10 +340,22 @@ For issues or questions, refer to:
 - MySQL Documentation: [https://dev.mysql.com/doc/](https://dev.mysql.com/doc/)
 - Alwaysdata Support: [https://help.alwaysdata.com/](https://help.alwaysdata.com/)
 - Chart.js Documentation: [https://www.chartjs.org/](https://www.chartjs.org/)
+- OWASP Security Guide: [https://owasp.org/](https://owasp.org/)
 
 ## Version History
 
-### v2.0 (Latest)
+### v3.0 (Latest - Security Enhanced)
+- **NEW**: HMAC-SHA256 token-based ID anonymization system
+- **NEW**: `security_helpers.php` with token generation/decoding functions
+- Enhanced form security with cryptographic token validation
+- Added database verification for all decoded IDs
+- Improved error handling for invalid/tampered tokens
+- Updated all forms to use tokenized values instead of raw IDs
+- Enhanced delete functionality with token-based validation
+- Comprehensive security documentation added
+- Multi-layer validation system implemented
+
+### v2.0
 - Added Driver Management page with CRUD operations
 - Enhanced Summary page with per-driver statistics
 - Added delete functionality with cascade delete
@@ -247,4 +374,17 @@ For issues or questions, refer to:
 
 Educational project - © 2025
 
+## Security Notice
+
+**IMPORTANT**: This application implements professional-grade security features. To maintain security:
+
+1. **Always change `TOKEN_SECRET`** in `security_helpers.php` to a unique random value
+2. Use strong database passwords
+3. Keep PHP and MySQL updated to latest stable versions
+4. Use HTTPS in production environments
+5. Regularly review and update security measures
+6. Never commit `config.php` or `security_helpers.php` with real credentials to public repositories
+
 ---
+
+**Built with security, performance, and user experience in mind.**

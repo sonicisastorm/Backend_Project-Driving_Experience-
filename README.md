@@ -5,6 +5,8 @@ A PHP and MySQL web application for managing and tracking supervised driving exp
 ## 🚗 Live Project
 **Visit the application**: [https://sonicstorm.alwaysdata.net/backend/driving_experience/](https://sonicstorm.alwaysdata.net/backend/driving_experience/)
 
+<img width="1914" height="962" alt="image" src="https://github.com/user-attachments/assets/cc30e270-2244-4eb1-9836-959c0aa6dcd7" />
+
 ## Features
 
 ### Core Functionality
